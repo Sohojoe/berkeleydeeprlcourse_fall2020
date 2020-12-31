@@ -32,7 +32,7 @@ A. (Recommended) Install with conda:
 
 	2. Create a conda environment that will contain python 3:
 	```
-	conda create -n cs285 python=3.6 pytorch=1.6 -c pytorch
+	conda create -n cs285 python=3.8 pytorch=1.6 -c pytorch
 	```
 
 	3. activate the environment (do this every time you open a new terminal and want to run code):
