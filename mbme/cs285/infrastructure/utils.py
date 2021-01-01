@@ -54,7 +54,7 @@ def mean_squared_error(a, b):
 ############################################
 ############################################
 
-def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('rgb_array')):
+def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('rgb_array'), train_func=None):
 # TODO: get this from Piazza
     ob = env.reset()
     obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
@@ -87,10 +87,13 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('
             break
         else:
             terminals.append(0)
+        
+        if train_func:
+            train_func()
 
     return Path(obs, image_obs, acs, rewards, next_obs, terminals)
 
-def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode=('rgb_array')):
+def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode=('rgb_array'), train_func=None):
     """
         Collect rollouts using policy
         until we have collected min_timesteps_per_batch steps
@@ -101,7 +104,7 @@ def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, r
     while timesteps_this_batch < min_timesteps_per_batch:
 
         # collect rollout
-        path = sample_trajectory(env, policy, max_path_length, render, render_mode)
+        path = sample_trajectory(env, policy, max_path_length, render, render_mode, train_func=train_func)
         paths.append(path)
 
         # count steps

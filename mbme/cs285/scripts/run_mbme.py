@@ -56,7 +56,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_name', type=str, default='marathon-hopper-v0') #reacher-cs285-v0, ant-cs285-v0, cheetah-cs285-v0, obstacles-cs285-v0
     parser.add_argument('--ep_len', type=int, default=1000)
-    parser.add_argument('--exp_name', type=str, default='todo')
+    parser.add_argument('--exp_name', type=str, default='debug')
     parser.add_argument('--n_iter', '-n', type=int, default=20)
 
     parser.add_argument('--ensemble_size', '-e', type=int, default=3)
@@ -65,8 +65,8 @@ def main():
 
     parser.add_argument('--add_sl_noise', '-noise', action='store_true', default=True)
     parser.add_argument('--num_agent_train_steps_per_iter', type=int, default=1000)
-    parser.add_argument('--batch_size_initial', type=int, default=20000) #(random) steps collected on 1st iteration (put into replay buffer)
-    parser.add_argument('--batch_size', '-b', type=int, default=8000) #steps collected per train iteration (put into replay buffer)
+    parser.add_argument('--batch_size_initial', type=int, default=300) #20000) #(random) steps collected on 1st iteration (put into replay buffer)
+    parser.add_argument('--batch_size', '-b', type=int, default=800) #8000) #steps collected per train iteration (put into replay buffer)
     parser.add_argument('--train_batch_size', '-tb', type=int, default=512) ##steps used per gradient step (used for training)
     parser.add_argument('--eval_batch_size', '-eb', type=int, default=400) #steps collected per eval iteration
 

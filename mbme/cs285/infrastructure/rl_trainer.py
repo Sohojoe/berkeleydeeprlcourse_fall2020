@@ -154,30 +154,36 @@ class RL_Trainer(object):
 
         print_period = 1
 
-        for itr in range(n_iter):
-            if itr % print_period == 0:
-                print("\n\n********** Iteration %i ************"%itr)
+        self._training_iter = 0
+        self._most_recent_losses = None
+        next_log_iter = 0 
+        while self._training_iter < n_iter:
+            print("\n\n********** Iteration %i ************"%self._training_iter)
 
-            # decide if videos should be rendered/logged at this iteration
-            if itr % self.params['video_log_freq'] == 0 and self.params['video_log_freq'] != -1:
-                self.logvideo = True
-            else:
-                self.logvideo = False
+            # # decide if videos should be rendered/logged at this iteration
+            # if self._training_iter % self.params['video_log_freq'] == 0 and self.params['video_log_freq'] != -1:
+            #     self.logvideo = True
+            # else:
+            #     self.logvideo = False
+            self.logvideo = False
 
             # decide if metrics should be logged
             if self.params['scalar_log_freq'] == -1:
                 self.logmetrics = False
-            elif itr % self.params['scalar_log_freq'] == 0:
+            elif self._training_iter > next_log_iter:
+                next_log_iter += self.params['scalar_log_freq']
                 self.logmetrics = True
             else:
                 self.logmetrics = False
 
             use_batchsize = self.params['batch_size']
-            if itr == 0:
+            train_func = self.train_agent
+            if self._training_iter == 0:
                 use_batchsize = self.params['batch_size_initial']
+                train_func = None
             paths, envsteps_this_batch, train_video_paths = (
                 self.collect_training_trajectories(
-                    itr, initial_expertdata, collect_policy, use_batchsize)
+                    self._training_iter, initial_expertdata, collect_policy, use_batchsize, train_func=train_func)
             )
 
             self.total_envsteps += envsteps_this_batch
@@ -189,19 +195,17 @@ class RL_Trainer(object):
                 self.agent.add_to_replay_buffer(paths)
 
             # train agent (using sampled data from replay buffer)
-            if itr % print_period == 0:
-                print("\nTraining agent...")
-            all_logs = self.train_agent()
-
-            # if there is a model, log model predictions
-            if isinstance(self.agent, MBAgent) and itr == 0:
-                self.log_model_predictions(itr, all_logs)
+            if self._most_recent_losses is None:
+                self.train_agent()
+                # if there is a model, log model predictions
+                if isinstance(self.agent, MBAgent):
+                    self.log_model_predictions(self._training_iter, self._most_recent_losses)
 
             # log/save
             if self.logvideo or self.logmetrics:
                 # perform logging
                 print('\nBeginning logging procedure...')
-                self.perform_logging(itr, paths, eval_policy, train_video_paths, all_logs)
+                self.perform_logging(self._training_iter, paths, eval_policy, train_video_paths, self._most_recent_losses)
 
                 if self.params['save_params']:
                     self.agent.save('{}/agent_itr_{}.pt'.format(self.params['logdir'], itr))
@@ -209,7 +213,7 @@ class RL_Trainer(object):
     ####################################
     ####################################
 
-    def collect_training_trajectories(self, itr, initial_expertdata, collect_policy, num_transitions_to_sample, save_expert_data_to_disk=False):
+    def collect_training_trajectories(self, itr, initial_expertdata, collect_policy, num_transitions_to_sample, save_expert_data_to_disk=False, train_func=None):
         """
         :param itr:
         :param load_initial_expertdata:  path to expert data pkl file
@@ -230,7 +234,7 @@ class RL_Trainer(object):
 
         # collect data to be used for training
         print("\nCollecting data to be used for training...")
-        paths, envsteps_this_batch = utils.sample_trajectories(self.env, collect_policy, num_transitions_to_sample, self.params['ep_len'])
+        paths, envsteps_this_batch = utils.sample_trajectories(self.env, collect_policy, num_transitions_to_sample, self.params['ep_len'], train_func=train_func)
 
         # collect more rollouts with the same policy, to be saved as videos in tensorboard
         train_video_paths = None
@@ -251,6 +255,7 @@ class RL_Trainer(object):
             ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = self.agent.sample(self.params['train_batch_size'])
             loss = self.agent.train(ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch)
             all_losses.append(loss)
+            self._training_iter += 1
         self._most_recent_losses = all_losses
         return all_losses
 

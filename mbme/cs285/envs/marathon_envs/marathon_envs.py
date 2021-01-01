@@ -73,8 +73,8 @@ class HopperEnv(UnityToGymWrapper, utils.EzPickle):
         utils.EzPickle.__init__(**locals())
         env_name='Hopper-v0'
         num_envs = 1
-        # unity_env = MarathonEnvs(env_name, num_envs, inference=True)
-        unity_env = MarathonEnvs(env_name, num_envs)
+        unity_env = MarathonEnvs(env_name, num_envs, inference=True)
+        # unity_env = MarathonEnvs(env_name, num_envs)
         UnityToGymWrapper.__init__(self, unity_env)
         obs_space = spaces.Box(
             -1.,
