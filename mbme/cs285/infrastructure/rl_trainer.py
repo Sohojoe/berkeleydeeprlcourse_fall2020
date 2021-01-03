@@ -157,6 +157,7 @@ class RL_Trainer(object):
         self._training_iter = 0
         self._most_recent_losses = None
         next_log_iter = 0 
+        initial_run = True
         while self._training_iter < n_iter:
             print("\n\n********** Iteration %i ************"%self._training_iter)
 
@@ -170,7 +171,7 @@ class RL_Trainer(object):
             # decide if metrics should be logged
             if self.params['scalar_log_freq'] == -1:
                 self.logmetrics = False
-            elif self._training_iter > next_log_iter:
+            elif self._training_iter >= next_log_iter or initial_run:
                 next_log_iter += self.params['scalar_log_freq']
                 self.logmetrics = True
             else:
@@ -195,20 +196,22 @@ class RL_Trainer(object):
                 self.agent.add_to_replay_buffer(paths)
 
             # train agent (using sampled data from replay buffer)
-            if self._most_recent_losses is None:
-                self.train_agent()
+            if initial_run:
+                self.train_agent(self.params['train_steps_initial'])
                 # if there is a model, log model predictions
                 if isinstance(self.agent, MBAgent):
-                    self.log_model_predictions(self._training_iter, self._most_recent_losses)
+                    self.log_model_predictions(0, self._most_recent_losses)
 
             # log/save
-            if self.logvideo or self.logmetrics:
+            if self.logvideo or self.logmetrics or initial_run:
                 # perform logging
                 print('\nBeginning logging procedure...')
-                self.perform_logging(self._training_iter, paths, eval_policy, train_video_paths, self._most_recent_losses)
+                self.perform_logging(self._training_iter, paths, eval_policy, train_video_paths, self._most_recent_losses, initial_run)
 
                 if self.params['save_params']:
                     self.agent.save('{}/agent_itr_{}.pt'.format(self.params['logdir'], itr))
+
+            initial_run = False
 
     ####################################
     ####################################
@@ -248,10 +251,12 @@ class RL_Trainer(object):
 
         return paths, envsteps_this_batch, train_video_paths
 
-    def train_agent(self):
+    def train_agent(self, steps = None):
     # TODO: get this from Piazza
         all_losses = []
-        for train_step in range(self.params['num_agent_train_steps_per_iter']):
+        if steps is None:
+            steps = self.params['num_agent_train_steps_per_iter']
+        for train_step in range(steps):
             ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = self.agent.sample(self.params['train_batch_size'])
             loss = self.agent.train(ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch)
             all_losses.append(loss)
@@ -261,7 +266,7 @@ class RL_Trainer(object):
 
     ####################################
     ####################################
-    def perform_logging(self, itr, paths, eval_policy, train_video_paths, all_logs):
+    def perform_logging(self, itr, paths, eval_policy, train_video_paths, all_logs, initial_run):
 
         last_log = all_logs[-1]
 
@@ -286,7 +291,7 @@ class RL_Trainer(object):
         #######################
 
         # save eval metrics
-        if self.logmetrics:
+        if self.logmetrics or initial_run:
             # returns, for logging
             train_returns = [path["reward"].sum() for path in paths]
             eval_returns = [eval_path["reward"].sum() for eval_path in eval_paths]
@@ -313,7 +318,7 @@ class RL_Trainer(object):
             logs["TimeSinceStart"] = time.time() - self.start_time
             logs.update(last_log)
 
-            if itr == 0:
+            if initial_run:
                 self.initial_return = np.mean(train_returns)
             logs["Initial_DataCollection_AverageReturn"] = self.initial_return
 
